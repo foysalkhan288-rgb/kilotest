@@ -114,6 +114,8 @@ Tables (all include `id`, `created_at`, `workspace_id`):
   active bool)
 - **tasks** (id, workspace_id, contact_id, title, due, done)
 - **activity_log** (id, workspace_id, type, message, created_at)
+- **reviews** (id, workspace_id, contact_id, platform, rating, body,
+  status, requested_at, responded_at)  [Phase 1.5]
 
 Relationships: workspace 1—* contacts/forms/pages/emails/appointments/
 workflows; contact 1—* opportunities/messages/tasks; form 1—* submissions.
@@ -137,6 +139,8 @@ Calendar: `GET/POST /calendars`, `GET /book/{slug}` (public),
 Workflows: `GET/POST/PATCH/DELETE /workflows`, `POST /workflows/{id}/toggle`
 Dashboard: `GET /dashboard/summary`
 Tasks: `GET/POST/PATCH /tasks`
+Reviews: `GET/POST /reviews`, `POST /reviews/request`,
+  `POST /reviews/{id}/respond`  [Phase 1.5]
 
 ## 5. Feature Specs (MVP)
 ### 5.1 Auth & Workspace
@@ -186,7 +190,19 @@ Engine: on event, evaluate matching workflows, execute actions in order;
 `GET /dashboard/summary` returns: total contacts, open pipeline value,
 appointments today, recent activity (last 10 from `activity_log`).
 
+### 5.10 Reputation & Reviews (Phase 1.5)
+Trigger review requests after a positive event (appointment completed,
+invoice paid, workflow step) via email/SMS link to Google or Facebook.
+Store incoming reviews in a **review inbox** with status (new/responded),
+and allow a saved response template (manual send; AI draft deferred to
+Phase 3). Keep it cheap: no scraping, just link-based requests + a place
+to read/paste replies. Data: `reviews` table; API: `GET/POST /reviews`,
+`POST /reviews/request`, `POST /reviews/{id}/respond`.
+
 ## 6. Roadmap (phases after MVP)
+- **Phase 1.5 — Reputation & Reviews:** automated review requests (Google/
+  Facebook), review inbox, basic response templates. Cheap, high-value; ship
+  right after MVP validation (see §5.10).
 - **Phase 2 — Messaging:** two-way SMS via Twilio; connect one inbox mailbox.
 - **Phase 3 — AI:** Conversation AI bot, Content AI, Voice AI (defer; costly).
 - **Phase 4 — Visual canvas:** drag-drop workflow builder (GHL-style).
@@ -220,3 +236,27 @@ appointments today, recent activity (last 10 from `activity_log`).
 - Exact low price point (decide after MVP works).
 - Resend vs SES (pick Resend for simplicity; SES if volume/cost demands).
 - Public page custom domains (defer to Phase 6).
+
+## 10. GHL Feature -> Our Phase Mapping
+| GHL capability (forensic report) | Our plan | Phase |
+|---|---|---|
+| CRM & Contacts | Full (tags, custom fields, notes, tasks) | MVP |
+| Pipelines / Opportunities | Kanban + deal value | MVP |
+| Forms & Surveys | Block builder (no quiz/NPS/e-sign) | MVP |
+| Funnels & Websites | Landing Pages block builder (no full funnel suite) | MVP |
+| Workflow Automation | Rules engine (5 triggers / 6 actions) | MVP |
+| Calendars / Booking | Public booking + reminders (no GCal 2-way) | MVP |
+| Email | Outbound only (no inbound parsing) | MVP |
+| Unified Inbox | Sent + in-app only (no SMS/Voice/social) | MVP |
+| Dashboard | Basic counts (no attribution/reporting) | MVP |
+| Reputation / Reviews | Review requests + review inbox | Phase 1.5 |
+| Phone / LC SMS & MMS | Twilio two-way SMS + mailbox | Phase 2 |
+| AI Suite (Voice/Conversation/Content) | AI bots | Phase 3 |
+| Workflow full canvas | Drag-drop builder (GHL 30+ triggers) | Phase 4 |
+| Multi-tenant sub-accounts | Agency + roles + white-label | Phase 5 |
+| SaaS Mode / Billing | Stripe plans, rebilling, custom domains | Phase 6 |
+| Memberships/Courses/Communities | Courses + community | Phase 7 |
+| Documents & Contracts | e-sign | Phase 7 |
+| Affiliate Manager | Affiliate program | Phase 7 |
+| Analytics / Revenue attribution | Reporting | Phase 7 |
+| Integrations (Zapier/Marketplace/API v2) | Public API + webhooks | Phase 7 |
