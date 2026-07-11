@@ -61,6 +61,8 @@ follow-up. All without code.
 - **Email send:** Resend (or Amazon SES) SDK
 - **Migrations:** Alembic
 - **Validation:** Pydantic schemas for every endpoint
+- **Background jobs:** APScheduler (in-process) for email sends, appointment
+  reminders, and workflow `Wait` steps; polls DB, no extra infra.
 - **Storage (future):** S3-compatible (Cloudflare R2) for page images/files
 
 ### 2.2 Hosting (Railway/Render)
@@ -183,8 +185,8 @@ Triggers: `form.submitted`, `contact.created`, `tag.added`,
 Actions: `send_email`, `add_tag`, `remove_tag`, `create_task`,
 `move_opportunity_stage`, `notify` (internal).
 Engine: on event, evaluate matching workflows, execute actions in order;
-`Wait` delays via a job/queue; `If/Else` branches on a contact field.
-(MVP uses a simple scheduler/background worker; full canvas later.)
+`Wait` delays via APScheduler job; `If/Else` branches on a contact field.
+(MVP uses APScheduler in-process; full canvas later.)
 
 ### 5.9 Dashboard
 `GET /dashboard/summary` returns: total contacts, open pipeline value,
