@@ -87,7 +87,7 @@ export default function Contacts() {
           placeholder="Search name, email, phone, company…"
           value={search}
           onChange={(e) => setSearch(e.currentTarget.value)}
-          sx={{ flex: 1 }}
+          style={{ flex: 1 }}
         />
         <Select
           placeholder="Filter by tag"
@@ -96,7 +96,7 @@ export default function Contacts() {
           onChange={setTagFilter}
           clearable
           searchable
-          sx={{ minWidth: 200 }}
+          style={{ minWidth: 200 }}
         />
       </Group>
 
@@ -316,7 +316,7 @@ function ContactCreateModal({
                 setTagInput("");
                 return { value: q, label: q };
               }}
-              sx={{ flex: 1 }}
+              style={{ flex: 1 }}
             />
             <Button size="xs" variant="light" onClick={addTag}>
               Add
@@ -501,7 +501,7 @@ function ContactDetailDrawer({
                 createAndAddTag();
                 return { value: q, label: q };
               }}
-              sx={{ flex: 1 }}
+              style={{ flex: 1 }}
             />
             <Button size="xs" variant="light" onClick={addTag} loading={tagMutation.isPending}>
               Add
