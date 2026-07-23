@@ -1,152 +1,131 @@
-# Multiplayer Temple Run — Offline P2P 3D Game
+# Multiplayer Temple Run — Offline Local IP 3D Game
 
 ## Goal
-A mobile-first 3D temple-run style racing game where one player hosts via local hotspot and others join offline. First player to reach the end point wins. Includes trap/bomb/punch/push/slide/throw power-ups, per-device accounts with a store, and real-time local leaderboards.
+Mobile-first 3D temple-run racing game hosted on a local hotspot. 1 host, multiple clients join over LAN. First to reach the finish line wins. Includes bomb/punch/push/slide/trap/throw power-ups, per-device accounts with a store, and local real-time leaderboard.
 
 ---
 
-## Tech Stack
-- **Rendering**: Three.js (ES modules) with Flat shading and LOD for mobile performance.
-- **Network**: PeerJS built on WebRTC (peer-to-peer, low-latency). Host is game authority. No backend.
-- **Local Database**: IndexedDB via `idb` wrapper (accounts, inventory, leaderboard, currencies).
-- **Controls**: Touch joystick (left side) + action buttons (right side). Swipe gestures for slide.
-- **Build/Packaging**: Vite (fast HMR), PWA with Service Worker for offline caching.
+## Fixed Stack Decisions
+- **Rendering**: Three.js (ES modules), flat shading, instanced meshes, ≤300 draw calls, baked lighting where possible. 30fps floor on mid-range mobile.
+- **Runtimes**: Host = browser-only Node.js + `ws` server; Clients = browser-only, no server install needed for joiners.
+- **Network**: Native `ws` server (host) + browser `WebSocket` (clients) over local hotspot IP. No signaling broker, fully offline.
+- **Local Database**: IndexedDB via `idb` wrapper for accounts, inventory, currencies, and leaderboard (all per-device).
+- **Build**: Vite; bundled as a PWA with Service Worker for offline asset caching.
+- **Controls**: Left touch joystick (lane/jump input), right action buttons (Bomb/Push/Punch/Slide/Trap/Throw), swipe up jump, swipe down slide.
 
 ---
 
-## Asset Sources (Open Source)
-- **Models/Tiles**: BlenderKit / Poly Haven / Kenney Assets (search `Kenney temple` or `low poly ruin`).
-- **Animations**: Mixamo for runner idle/run/jump/slide (retarget to Three.js skeleton).
-- **Textures**: `cc0textures.com` / `ambientcg.com` for PBR textures.
+## Host Server (Node.js + ws)
+- Spins up `http` (serves static PWA files) + `ws` on a configurable port (default `8080`).
+- Prints local IP + port + short Room Code on startup.
+- **Game loop**: `setInterval` at 50Hz (20ms). Authoritative physics + collision + power-up resolution.
+- **State broadcast**: JSON delta snapshots at 20Hz to all connected clients.
+- **Protocol**:
+  - Client → Host: `{type:"input", seq, x, jump, action, timestamp}`
+  - Host → Client: `{type:"state", players:[{id,x,z,lane,stunUntil,alive}], obstacles:[], effects:[]}`
+  - Host → Client: `{type:"result", finishOrder:[id,id,id]}` on race end.
+
+---
+
+## Client (Browser)
+- Connects via `new WebSocket(hostUrl)`.
+- Sends input vector each tick.
+- Renders received `state` payload with interpolation (render at 30fps, network 50Hz).
+- Handles touch joystick and action buttons.
 
 ---
 
 ## Game Mechanics
-- **Course**: Linear temple corridor (3-8 lanes) with randomized obstacles (walls, pits, traps).
-- **Runners**: Third-person, automatic forward pace. User lanes left/right and jumps/pushes.
-- **Items**: Equipped before run or collected mid-run:
-  - Bomb: Area-of-effect stun
-  - Push: Direct knockback 1 lane
-  - Punch: Melee stun (close range)
-  - Slide: Skip low obstacle
-  - Trap: Leave behind, slows others
-  - Throw: Projectile stun
-- **Win condition**: First to cross finish line.
+- **Course**: Linear 3–8 lane temple corridor, ~90s run. Random obstacle seeds but same per room.
+- **Win**: First `z >= finishZ`.
+- **Power-ups** (equipped pre-run from store):
+  - Bomb: AoE stun (2 lane radius, 1.5s)
+  - Push: 1-lane knockback to target
+  - Punch: Melee stun, 1 lane range
+  - Slide: Immune to low obstacles for 2s
+  - Trap: Place behind, 2s slow+stun trigger
+  - Throw: Projectile stun (travel 3 lanes, 0.5s)
 
 ---
 
-## Multiplayer Architecture (Offline / Hotspot)
-1. **Host**:
-   - Generates a Game Code (short string).
-   - Hosts PeerJS server (in-browser signaling emulation required).
-   - Acts as **authoritative server**: runs physics, collision, power-up logic.
-   - Broadcasts state snapshots at 20Hz.
-2. **Client**:
-   - Sends input vector (left/right/jump/slide/action) to host.
-   - Renders predicted local state; corrects on server reconciliation.
-3. **Discovery in offline mode**:
-   - Use the Game Code + local LAN IP for direct WebRTC connection.
-   - Client scans common ports on the local subnet for a PeerJS broker or use a manual IP entry dialog.
+## Account & Store (Per-Device / IndexedDB)
+- `players` store: `{id, username, deviceIdHash, totalCoins, createdAt}`
+- `inventory` store: `{id, deviceIdHash, itemId, quantity, equipped}`
+- `leaderboard` store: `{raceId, finishOrder:[{deviceIdHash,username,time}], createdAt}`
+- `versions` store: `dbVersion`.
+- **Store prices**: Bomb=100, Push=80, Punch=120, Slide=60, Trap=90, Throw=110 (in-game coins).
+- **Earning**: 1st place +50c, 2nd +30c, 3rd +15c. Daily bonus = +20c (24h gate).
 
 ---
 
-## Account & Store (Per-Device)
-- **Storage**: IndexedDB stores:
-  - `players` (id, username, avatar, currency)
-  - `inventory` (itemId, quantity, equippedSlot)
-  - `leaderboard` (raceId, position, timestamp, deviceId hash)
-  - `currencies` (coins, gems, sourceTransactionId)
-- **Store**: Purchases with fake currency earned through races. No internet validation required.
-- **Sync**: Offline-first. Optional peer-to-peer leaderboard exchange with host at session end.
-- **Anti-cheat** (client-side only, accept limitation):
-  - Sanity checks for impossible speeds/positions on the host authority.
-  - Tamper-free assertions: host never trusts client for time/position.
+## UI Layout
+- Three.js canvas full-screen.
+- CSS overlay (absolute divs, plain CSS, no CDN): HUD (lap, rank, timer), lobby (host/join inputs), store (grid of items), results.
+- Mobile touch zones: left 35% = joystick, right 65% = action buttons. Tap on action icons triggers power-up with debounce / cooldown.
 
 ---
 
-## Controls (Mobile)
-- **Left zone**: Touch-move joystick (virtual analog stick).
-- **Right zone**: Tap action buttons (Bomb/Push/Punch/Slide/Trap/Throw).
-- **Swipe up**: Jump. Swipe down: Slide.
-- **Esc key / menu button**: Pause.
-
----
-
-## UI Framework
-- Pure Three.js scene + HTML/CSS overlay (HUD: health, timer, minimap, store).
-- TailwindCSS via CDN for HUD styling (or plain CSS for offline resilience).
+## Asset Sources (Pre-downloaded by impl agent)
+- Temple geometry/tiles: Kenney `low-poly-temple-pack` (CC0).
+- Textures: ambientCG `Rock_04_1K-JPG` or similar CC0.
+- Animations: Mixamo Free (Idle/Run/Jump/Slide) — retargeted to simple rig; baked into FBX or glTF.
 
 ---
 
 ## Directory Structure
 ```
 temple-run-multiplayer/
-├── public/
-│   ├── assets/              # 3D models, textures (downloaded)
-│   └── manifest.json
-├── src/
-│   ├── core/
-│   │   ├── game.js          # Main game loop, state machine
-│   │   ├── scene.js         # Three.js setup, lighting, camera
-│   │   └── loader.js        # Asset loading manager
-│   ├── network/
-│   │   ├── peer.js          # PeerJS host/join logic
-│   │   ├── protocol.js      # Message types (input, state, event)
-│   │   └── host.js          # Authoritative game tick
-│   ├── player/
-│   │   ├── runner.js        # Player character controller
-│   │   ├── inventory.js     # Items selection
-│   │   └── abbotities.js    # Power-up activation
-│   ├── store/
-│   │   ├── db.js            # IndexedDB wrapper
-│   │   ├── account.js       # Player profile logic
-│   │   └── shop.js          # Store UI and purchase
-│   ├── ui/
-│   │   ├── hud.js           # HUD, menus, store overlay
-│   │   └── controls.js      # Touch/UI input binding
-│   ├── level/
-│   │   ├── generator.js     # Procedural corridor generation
-│   │   ├── obstacles.js     # Walls, pits, triggers
-│   │   └── effects.js       # Particles, explosions
-│   ├── main.js
-│   └── style.css
-├── index.html
-├── vite.config.js
+├── server.js              # ws + http host
 ├── package.json
-└── plan.md
+├── vite.config.js
+├── index.html
+├── src/
+│   ├── main.js            # entry
+│   ├── game.js            # Game state machine (lobby, countdown, race, result)
+│   ├── scene.js
+│   ├── controls.js        # touch input
+│   ├── network/
+│   │   ├── client.js      # WebSocket client
+│   │   └── protocol.js    # message types
+│   ├── entities/
+│   │   ├── runner.js
+│   │   ├── obstacle.js
+│   │   └── projectile.js
+│   ├── store/
+│   │   ├── db.js
+│   │   ├── account.js
+│   │   └── shop.js
+│   └── style.css
+└── public/
+    ├── assets/            # pre-downloaded models + textures
+    └── sw.js              # PWA service worker
 ```
 
 ---
 
 ## Data Flow
-1. **Pre-game**: Account load → Shop → Item equip → Game lobby.
-2. **Lobby**: Host creates room, clients join. Host loads level, sends initial state.
-3. **In-game** (20Hz tick):
-   - Clients → Host: `{input: {x, jump, action}, timestamp}`.
-   - Host → Clients: `{players: [...], obstacles: [...], effects: [...]}`.
-4. **Post-game**: Client requests sync → Host confirms results → Leaderboard update + currency award.
+1. **Lobby**: Host starts `server.js`, opens `localhost:8080`. Clients enter `http://<host-ip>:8080`. Enter name → join room.
+2. **Countdown**: Host sends `start` with obstacle seed + player spawn lanes.
+3. **In-race**:
+   - Client sends input at each rendered frame.
+   - Host processes 50Hz tick → broadcasts state at 20Hz.
+   - Clients render interpolated state.
+4. **Finish**: Host emits `finish` event with ordered finish array. Client shows results, awards coins, writes to IndexedDB.
 
 ---
 
-## Risk & Limitation Mitigation
-- **Offline discovery**: Require users to enter the host's local IP manually. Use zero-conf mDNS if supported.
-- **Host cheating**: Game-loop is state server, can log inputs. Local play, trust friends.
-- **Performance**: Keep draw calls < 300 with instancing; use baked lighting and vertex colors.
-- **Cross-device sync**: Manual conflict resolution or last-write-wins for local-only leaderboard.
+## Milestones
+1. **M1**: `server.js`, static asset serving, client `wss://` connect + host/join UI.
+2. **M2**: Three.js temple corridor, one runner, touch joystick, movement, camera follow.
+3. **M3**: Authoritative host tick, state broadcast, 2+ clients showing positions.
+4. **M4**: Obstacles + all 6 power-ups with collision resolution.
+5. **M5**: IndexedDB account, shop, leaderboard, results screen.
+6. **M6**: Proc-gen corridor, polish, PWA packaging, input dead-zone tuning.
 
 ---
 
-## Milestones & Validation
-1. **M1**: Three.js empty temple corridor with one runner & mobile joystick.
-2. **M2**: Host/join lobby and sending player positions over WebRTC.
-3. **M3**: Authoritative host tick, sync, and collision.
-4. **M4**: Power-ups (all 6 items) + local animation.
-5. **M5**: IndexedDB account, shop, currency, leaderboard.
-6. **M6**: Polish, asset replacement, touch optimizations, PWA packaging.
-
----
-
-## Open Questions to Resolve Before Implementation
-1. **P2P Signaling Offline**: PeerJS requires a broker for initial connection. For true offline internet-free setup, should we bundle a tiny Node.js signaling server the host runs alongside the game, or restrict to manual IP/port entry over WebRTC directly?
-2. **Asset Licensing**: Which specific Kenney/Poly Haven packs to use?
-3. **Frame Budget**: Target 30fps or 60fps on mid-range mobile?
+## Failure Modes
+- **Host disconnects**: Race ends immediately, partial results written.
+- **Client lag**: Host drops packet if `seq` falls behind 2 ticks; client smooths via interpolation.
+- **Large lobby**: Cap at 8 players to keep bandwidth < 64kbps/client.
+- **Hotspot DHCP churn**: Host shows current IP; clients refresh if connection drops.
