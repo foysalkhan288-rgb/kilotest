@@ -105,3 +105,31 @@ class TagOut(BaseModel):
 
 class Message(BaseModel):
     detail: str = "Not implemented"
+
+
+# --------------------------------------------------------------------------
+# Tasks
+# --------------------------------------------------------------------------
+class TaskBase(BaseModel):
+    title: str | None = None
+    due: datetime | None = None
+    done: bool = False
+
+
+class TaskCreate(TaskBase):
+    contact_id: uuid.UUID
+
+
+class TaskUpdate(BaseModel):
+    contact_id: uuid.UUID | None = None
+    title: str | None = None
+    due: datetime | None = None
+    done: bool | None = None
+
+
+class TaskOut(TaskBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    workspace_id: uuid.UUID
+    contact_id: uuid.UUID

@@ -400,6 +400,12 @@ def upgrade() -> None:
         sa.Column("title", sa.String(), nullable=True),
         sa.Column("due", sa.DateTime(timezone=True), nullable=True),
         sa.Column("done", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=True,
+        ),
         sa.ForeignKeyConstraint(["workspace_id"], ["workspaces.id"]),
         sa.ForeignKeyConstraint(["contact_id"], ["contacts.id"]),
         sa.PrimaryKeyConstraint("id"),

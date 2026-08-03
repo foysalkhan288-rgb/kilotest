@@ -13,6 +13,7 @@ import Pages from "./pages/Pages";
 import Email from "./pages/Email";
 import Inbox from "./pages/Inbox";
 import Calendar from "./pages/Calendar";
+import Tasks from "./pages/Tasks";
 import Workflows from "./pages/Workflows";
 import Reviews from "./pages/Reviews";
 import { getAccessToken } from "./api/client";
@@ -44,6 +45,7 @@ function AppRoutes() {
         <Route path="/email" element={<Email />} />
         <Route path="/inbox" element={<Inbox />} />
         <Route path="/calendar" element={<Calendar />} />
+        <Route path="/tasks" element={<Tasks />} />
         <Route path="/workflows" element={<Workflows />} />
         <Route path="/reviews" element={<Reviews />} />
       </Route>

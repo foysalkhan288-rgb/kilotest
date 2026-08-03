@@ -19,6 +19,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Email", to: "/email" },
   { label: "Inbox", to: "/inbox" },
   { label: "Calendar", to: "/calendar" },
+  { label: "Tasks", to: "/tasks" },
   { label: "Workflows", to: "/workflows" },
   { label: "Reviews", to: "/reviews" },
 ];

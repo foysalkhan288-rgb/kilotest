@@ -41,7 +41,7 @@ export default function Login() {
 
   return (
     <Paper withBorder shadow="md" p={30} mt={30} radius="md" w={400} mx="auto">
-      <Title order={2} mb="md" align="center">
+      <Title order={2} mb="md" ta="center">
         Sign in
       </Title>
       {error && (

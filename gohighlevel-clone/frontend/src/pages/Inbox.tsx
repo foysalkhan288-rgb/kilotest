@@ -57,7 +57,7 @@ export default function Inbox() {
                     }}
                     onClick={() => setSelectedId(c.id)}
                   >
-                    <Group justify="space-between" wrap={false}>
+                    <Group justify="space-between" wrap="nowrap">
                       <Box style={{ overflow: "hidden" }}>
                         <Text fw={600} truncate>
                           {c.contact_name}
