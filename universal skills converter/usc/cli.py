@@ -8,7 +8,7 @@ import click
 from usc.batch import batch_convert, find_skill_files, print_batch_results
 from usc.converter import convert as convert_skill, convert_file, set_verbose
 from usc.detector import detect_tool
-from usc.fetcher import fetch, is_github_url, is_local_file
+from usc.fetcher import fetch, is_github_url, is_local_file, search_github
 from usc.installer import install_skill, sanitize_name
 from usc.tools_registry import list_tools, get_tool
 from usc.validator import find_tool_specific_references, validate_skill, format_validation_report
@@ -126,6 +126,75 @@ def convert(ctx, source, target, install, output_path, force, dry_run, verbose, 
         sys.exit(1)
 
 
+@cli.command(name="init")
+@click.argument("name")
+@click.option("--target", help="Target tool (optional, for frontmatter)")
+@click.option("--output", "output_path", type=click.Path(), help="Write skill to this file path")
+def init_cmd(name, target, output_path):
+    """Create a new universal skill from a template.
+
+    NAME is the skill name (used for filename).
+    """
+    try:
+        skill_name = sanitize_name(name)
+        if not skill_name:
+            click.echo("Error: invalid skill name", err=True)
+            sys.exit(1)
+
+        # Build frontmatter
+        frontmatter_lines = ["---"]
+        frontmatter_lines.append(f"name: {name}")
+        if target:
+            tool = get_tool(target)
+            frontmatter_lines.append(f"description: Universal skill for {tool['name']}")
+        else:
+            frontmatter_lines.append("description: Universal skill")
+        frontmatter_lines.append("allowed-capabilities: []")
+        frontmatter_lines.append("---")
+        frontmatter_lines.append("")
+
+        # Build body
+        body = f"""# {name}
+
+## Description
+
+Describe what this skill does and when to use it.
+
+## Instructions
+
+1. Step-by-step instructions go here
+2. Use your AI assistant's capabilities appropriately
+3. Follow best practices for the task
+
+## Examples
+
+```bash
+# Example commands
+```
+
+## Notes
+
+- Keep instructions tool-agnostic
+- Use generic terms like "your editor" instead of tool-specific names
+- Reference "the best available model" instead of specific model names
+"""
+
+        content = "\n".join(frontmatter_lines) + body
+
+        if output_path:
+            Path(output_path).write_text(content, encoding="utf-8")
+            click.echo(f"Skill template written to: {output_path}")
+        else:
+            click.echo(content)
+
+    except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Unexpected error: {e}", err=True)
+        sys.exit(1)
+
+
 @cli.command(name="detect")
 def detect_cmd():
     """Detect the currently active AI coding tool."""
@@ -234,6 +303,44 @@ def batch_cmd(paths, target, output_dir, force, dry_run, no_recursive):
         failed = sum(1 for r in results if not r["success"])
         if failed:
             sys.exit(1)
+
+    except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Unexpected error: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command(name="search")
+@click.argument("query")
+@click.option("--max-results", default=10, help="Maximum number of results")
+@click.option("--json", "json_output", is_flag=True, help="Output as JSON")
+def search_cmd(query, max_results, json_output):
+    """Search GitHub for skills.
+
+    QUERY is the search query (e.g., 'claude code prompting').
+    """
+    try:
+        results = search_github(query, max_results=max_results)
+
+        if json_output:
+            click.echo(json.dumps(results, indent=2))
+            return
+
+        if not results:
+            click.echo("No results found.")
+            return
+
+        click.echo(f"Found {len(results)} repositories:")
+        click.echo("")
+        for i, repo in enumerate(results, 1):
+            click.echo(f"{i}. {repo['name']}")
+            click.echo(f"   URL: {repo['url']}")
+            if repo['description']:
+                click.echo(f"   Description: {repo['description']}")
+            click.echo(f"   Stars: {repo['stars']}")
+            click.echo("")
 
     except ValueError as e:
         click.echo(f"Error: {e}", err=True)

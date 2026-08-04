@@ -6,7 +6,7 @@ from typing import Any
 DEFAULT_CONFIG_PATHS = [
     os.path.expanduser("~/.config/usc/config.yaml"),
     os.path.expanduser("~/.usc.yaml"),
-    os.path.expanduser("./.usc.yaml"),
+    ".usc.yaml",
 ]
 
 
@@ -26,6 +26,8 @@ def load_config() -> dict[str, Any]:
 
     for path in DEFAULT_CONFIG_PATHS:
         try:
+            if not os.path.isabs(path):
+                path = os.path.join(os.getcwd(), path)
             if os.path.isfile(path):
                 with open(path, "r", encoding="utf-8") as f:
                     return yaml.safe_load(f) or {}

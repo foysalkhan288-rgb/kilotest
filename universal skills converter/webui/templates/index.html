@@ -98,7 +98,7 @@
                         alert(data.error || 'Failed to fetch');
                         return;
                     }
-                    input.value = data.original_size ? '' : data.converted;
+                    input.value = '';
                     output.value = data.converted;
                     updateStats(data);
                 } catch (e) {

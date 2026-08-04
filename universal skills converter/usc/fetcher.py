@@ -214,3 +214,39 @@ def fetch(source: str) -> str:
         f"Unable to detect source type for: {source}\n"
         "Expected a GitHub URL, local file path, or piped stdin."
     )
+
+
+def search_github(query: str, max_results: int = 10) -> list[dict]:
+    """Search GitHub repositories for skills.
+
+    Uses the GitHub search API to find repositories that might contain skills.
+
+    Args:
+        query: Search query (e.g., 'claude code skill')
+        max_results: Maximum number of results to return
+
+    Returns:
+        List of dicts with keys: name, url, description, stars
+    """
+    headers: dict[str, str] = {}
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = f"token {token}"
+
+    search_url = f"https://api.github.com/search/repositories?q={query}+skill&sort=stars&per_page={max_results}"
+    response = requests.get(search_url, headers=headers, timeout=30)
+
+    if response.status_code != 200:
+        raise ValueError(f"GitHub search failed: {response.status_code} {response.text}")
+
+    data = response.json()
+    results = []
+    for item in data.get("items", []):
+        results.append({
+            "name": item.get("full_name", ""),
+            "url": item.get("html_url", ""),
+            "description": item.get("description", "") or "",
+            "stars": item.get("stargazers_count", 0),
+        })
+
+    return results

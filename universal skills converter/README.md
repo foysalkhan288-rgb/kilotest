@@ -22,26 +22,107 @@ Fetch → Detect → Convert → Install
 ## Installation
 
 ```bash
+cd "universal skills converter"
 pip install -e .
 ```
 
-## Usage
+## Quick Start
 
 ```bash
-usc convert <source>
-usc convert <source> --target opencode --install
-usc convert <source> --output skill.md
-usc detect
-usc list-tools
-cat skill.md | usc convert --target cursor --install
+# Convert a GitHub skill and install to OpenCode
+usc convert https://github.com/anthropics/skills/tree/main/advanced-prompting --target opencode --install
+
+# Convert a local file
+usc convert ~/Downloads/claude-skill.md --target cursor
+
+# Preview without installing
+usc convert skill.md --target codex --dry-run
+
+# Create a new skill from template
+usc init "My New Skill" --target opencode --output my-skill.md
+
+# Validate a skill for tool-specific references
+usc check skill.md --target opencode
+
+# Batch convert a directory
+usc batch ./skills/ --target cursor --output-dir ./converted/
+
+# Start web UI
+python3 -m webui.run
 ```
 
-- `usc convert <source>` — Convert a skill and print to stdout.
-- `usc convert <source> --target opencode --install` — Convert and install directly into OpenCode's skills directory.
-- `usc convert <source> --output skill.md` — Write the converted skill to a file.
-- `usc detect` — Detect the active AI assistant tool from the current environment.
-- `usc list-tools` — List all supported tools and their keys.
-- `cat skill.md | usc convert --target cursor --install` — Convert from stdin and install into Cursor.
+## Commands
+
+### `usc convert <source>`
+
+Convert a skill from a GitHub URL, local file, or stdin.
+
+```
+usc convert <source> [OPTIONS]
+
+Arguments:
+  SOURCE  GitHub URL, local file path, or '-' for stdin
+
+Options:
+  --target TEXT       Target tool (e.g., opencode, cursor, claude-code)
+  --install           Install to target tool's skills directory
+  --output PATH       Write converted skill to file
+  --force             Overwrite existing skill file
+  --dry-run           Print converted skill without writing
+  --verbose           Show detailed transformation logs
+  --name TEXT         Custom name for skill file (without .md)
+```
+
+### `usc init <name>`
+
+Create a new universal skill from a template.
+
+```
+usc init <name> [OPTIONS]
+
+Arguments:
+  NAME  Skill name
+
+Options:
+  --target TEXT   Target tool (optional)
+  --output PATH   Write skill to file
+```
+
+### `usc detect`
+
+Detect the currently active AI coding tool.
+
+### `usc list-tools`
+
+List all supported AI coding tools and their configuration paths.
+
+### `usc check <source>`
+
+Validate a skill for tool-specific references.
+
+```
+usc check <source> [OPTIONS]
+
+Options:
+  --target TEXT   Target tool for tool-specific patterns
+  --strict        Fail on any tool-specific reference
+  --json          Output as JSON
+```
+
+### `usc batch <paths>...`
+
+Convert multiple skills in bulk.
+
+```
+usc batch <PATHS>... [OPTIONS]
+
+Options:
+  --target TEXT       Target tool (required)
+  --output-dir PATH   Output directory for converted skills
+  --force             Overwrite existing files
+  --dry-run           Preview without writing
+  --no-recursive      Don't search subdirectories
+```
 
 ## Supported Tools
 
@@ -53,19 +134,77 @@ cat skill.md | usc convert --target cursor --install
 | Codex           | `codex`      | `~/.codex/skills/`                                    |
 | Antigravity IDE | `antigravity`| `~/.antigravity/skills/`                              |
 | Gemini CLI      | `gemini`     | `~/.gemini/skills/`                                   |
+| Windsurf        | `windsurf`   | `~/.windsurf/skills/`                                 |
+| Aide            | `aide`       | `~/.aide/skills/`                                     |
 
 ## What gets converted
 
 - Tool names (e.g. "Claude Code" → "your AI assistant")
 - Tool-specific CLI commands and flags
 - File paths referencing tool-specific directories
-- Model names
+- Model names (e.g. "Opus" → "the best available model")
 - Built-in tool references (e.g. `Bash`, `Read`, `Glob`)
-- UI hints and frontmatter fields
+- UI hints and keyboard shortcuts
+- YAML frontmatter fields (`model`, `allowed-tools`, tool-specific keys)
 
 ## Code block preservation
 
 Code inside triple backticks is **not modified**. This means example commands, scripts, and configuration snippets inside your skill remain exactly as written — only the surrounding descriptive text is normalized.
+
+## Validation
+
+After conversion, use `usc check` to verify no tool-specific references remain:
+
+```bash
+usc check converted-skill.md --target opencode
+```
+
+The validator scores skills 0-100 and reports any findings with line numbers.
+
+## Configuration
+
+You can customize behavior with a config file. Place it at one of these locations (checked in order):
+
+- `~/.config/usc/config.yaml`
+- `~/.usc.yaml`
+- `./.usc.yaml` (project-local)
+
+Example `usc_config.example.yaml`:
+
+```yaml
+# Custom regex patterns (applied after base patterns)
+patterns:
+  - regex: '\bMyCustomTool\b'
+    replacement: 'your AI assistant'
+  - regex: '~/.mytool/'
+    replacement: ''
+
+# Only enable these tools (leave empty for all)
+# enabled_tools:
+#   - claude-code
+#   - opencode
+#   - cursor
+```
+
+## Web UI
+
+For a browser-based interface:
+
+```bash
+pip install -e ".[webui]"
+python3 -m webui.run
+```
+
+Then open http://localhost:5000 in your browser.
+
+## Batch Conversion
+
+Convert multiple skills at once:
+
+```bash
+usc batch ./my-skills/ --target cursor --output-dir ./converted/
+usc batch "skills/*.md" --target opencode --dry-run
+```
 
 ## Limitations
 
@@ -77,7 +216,7 @@ Code inside triple backticks is **not modified**. This means example commands, s
 
 ## Contributing
 
-Contributions are welcome. To add support for a new tool or detection pattern, see the source code in `universal_skills_converter/` and follow the existing registry structure.
+Contributions are welcome. To add support for a new tool or detection pattern, see the source code in `usc/` and follow the existing registry structure.
 
 ## License
 
