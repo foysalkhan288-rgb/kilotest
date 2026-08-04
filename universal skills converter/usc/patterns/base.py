@@ -6,7 +6,7 @@ TOOL_NAMES = (
 )
 
 COMMANDS = (
-    re.compile(r'^\s*(?:claude|opencode|cursor|codex|antigravity|gemini)\s+.*$', re.IGNORECASE),
+    re.compile(r'^\s*(?:claude|opencode|cursor|codex|antigravity|gemini)\s+.*$', re.IGNORECASE | re.MULTILINE),
     ''
 )
 
