@@ -1,0 +1,23 @@
+[project]
+name = "universal-skills-converter"
+version = "0.1.0"
+description = "A tool for converting and detecting universal skills"
+requires-python = ">=3.10"
+dependencies = [
+    "click",
+    "requests",
+    "psutil",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+]
+
+[project.scripts]
+usc = "usc.cli:cli"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
