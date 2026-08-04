@@ -23,6 +23,13 @@
                     </div>
                 </div>
                 <div class="control-group">
+                    <label for="search-query">Search GitHub</label>
+                    <div class="input-row">
+                        <input type="text" id="search-query" placeholder="Search skills...">
+                        <button id="search-btn" type="button">Search</button>
+                    </div>
+                </div>
+                <div class="control-group">
                     <label for="target-tool">Target Tool</label>
                     <select id="target-tool">
                         {% for tool in tools %}
@@ -34,6 +41,11 @@
                     <label>&nbsp;</label>
                     <button id="convert-btn" type="button">Convert</button>
                 </div>
+            </div>
+
+            <div id="search-results" class="search-results" hidden>
+                <h3>Search Results</h3>
+                <ul id="search-results-list"></ul>
             </div>
 
             <div class="panels">
@@ -161,6 +173,64 @@
                 a.download = 'converted-skill.md';
                 a.click();
                 URL.revokeObjectURL(url);
+            });
+
+            const searchQuery = document.getElementById('search-query');
+            const searchBtn = document.getElementById('search-btn');
+            const searchResults = document.getElementById('search-results');
+            const searchResultsList = document.getElementById('search-results-list');
+
+            searchBtn.addEventListener('click', async function() {
+                const query = searchQuery.value.trim();
+                if (!query) return;
+
+                searchBtn.disabled = true;
+                searchBtn.textContent = 'Searching...';
+
+                try {
+                    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&max_results=10`);
+                    const data = await res.json();
+                    if (!res.ok) {
+                        alert(data.error || 'Search failed');
+                        return;
+                    }
+
+                    searchResultsList.innerHTML = '';
+                    if (data.results && data.results.length > 0) {
+                        data.results.forEach(function(repo) {
+                            const li = document.createElement('li');
+                            li.className = 'search-result-item';
+                            li.innerHTML = `
+                                <strong><a href="${repo.url}" target="_blank">${repo.name}</a></strong>
+                                <span class="stars">⭐ ${repo.stars}</span>
+                                <p>${repo.description || ''}</p>
+                                <button class="use-repo-btn" data-url="${repo.url}">Use</button>
+                            `;
+                            searchResultsList.appendChild(li);
+                        });
+                        searchResults.hidden = false;
+
+                        // Add event listeners to "Use" buttons
+                        document.querySelectorAll('.use-repo-btn').forEach(function(btn) {
+                            btn.addEventListener('click', function() {
+                                const repoUrl = this.getAttribute('data-url');
+                                githubInput.value = repoUrl;
+                                input.value = '';
+                                output.value = '';
+                                stats.hidden = true;
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            });
+                        });
+                    } else {
+                        searchResultsList.innerHTML = '<li>No results found.</li>';
+                        searchResults.hidden = false;
+                    }
+                } catch (e) {
+                    alert('Network error: ' + e.message);
+                } finally {
+                    searchBtn.disabled = false;
+                    searchBtn.textContent = 'Search';
+                }
             });
 
             function updateStats(data) {

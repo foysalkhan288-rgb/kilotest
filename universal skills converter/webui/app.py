@@ -7,7 +7,7 @@ from flask import Flask, jsonify, render_template, request
 try:
     from usc.converter import convert as convert_skill
     from usc.tools_registry import TOOLS, get_tool, list_tools
-    from usc.fetcher import fetch, is_github_url
+    from usc.fetcher import fetch, is_github_url, search_github
 except ImportError:  # pragma: no cover - optional dependency
     convert_skill = None
     TOOLS = {}
@@ -15,6 +15,7 @@ except ImportError:  # pragma: no cover - optional dependency
     get_tool = lambda key: {}
     fetch = None
     is_github_url = lambda url: False
+    search_github = None
 
 app = Flask(__name__)
 
@@ -83,3 +84,21 @@ def api_convert():
         'converted_size': converted_size,
         'changes': [{'chars_changed': chars_changed}],
     })
+
+
+@app.route('/api/search', methods=['GET'])
+def api_search():
+    query = request.args.get('q', '').strip()
+    max_results = request.args.get('max_results', 10, type=int)
+
+    if not query:
+        return jsonify({'error': 'Query parameter q is required'}), 400
+
+    if search_github is None:
+        return jsonify({'error': 'Search is not available'}), 500
+
+    try:
+        results = search_github(query, max_results=max_results)
+        return jsonify({'query': query, 'results': results})
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 400

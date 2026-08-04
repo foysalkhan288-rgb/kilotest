@@ -172,13 +172,17 @@ class TestBatchConvert:
         assert "OLD" not in content
 
     def test_batch_convert_error_result(self, tmp_path):
-        """Errors are captured in result dicts."""
+        """Nonexistent output directory is created automatically."""
         skill = tmp_path / "skill.md"
         skill.write_text("Hello")
-        results = batch_convert([str(skill)], target="opencode", output_dir="/nonexistent/dir")
+        results = batch_convert(
+            [str(skill)],
+            target="opencode",
+            output_dir=str(tmp_path / "nonexistent" / "dir"),
+        )
         assert len(results) == 1
-        assert results[0]["success"] is False
-        assert results[0]["error"] is not None
+        assert results[0]["success"] is True
+        assert results[0]["error"] is None
 
 
 class TestPrintBatchResults:

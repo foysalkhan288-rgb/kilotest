@@ -9,6 +9,7 @@ from usc.batch import batch_convert, find_skill_files, print_batch_results
 from usc.converter import convert as convert_skill, convert_file, set_verbose
 from usc.detector import detect_tool
 from usc.fetcher import fetch, is_github_url, is_local_file, search_github
+from usc.frontmatter import parse_frontmatter
 from usc.installer import install_skill, sanitize_name
 from usc.tools_registry import list_tools, get_tool
 from usc.validator import find_tool_specific_references, validate_skill, format_validation_report
@@ -343,6 +344,121 @@ def search_cmd(query, max_results, json_output):
             click.echo("")
 
     except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Unexpected error: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command(name="info")
+@click.argument("source", required=False, default="-")
+@click.option("--target", help="Target tool for validation context")
+def info_cmd(source, target):
+    """Show metadata and validation info for a skill.
+
+    SOURCE can be a local file path or '-' for stdin.
+    """
+    try:
+        if source == "-":
+            if sys.stdin.isatty():
+                click.echo("Reading from stdin (Ctrl+D to finish)...", err=True)
+            from usc.fetcher import fetch_stdin
+            content = fetch_stdin()
+        else:
+            path = Path(source)
+            if not path.exists():
+                click.echo(f"Error: file not found: {source}", err=True)
+                sys.exit(1)
+            content = path.read_text(encoding="utf-8")
+
+        # Parse frontmatter
+        metadata, body = parse_frontmatter(content)
+
+        click.echo("=== Skill Info ===")
+        click.echo("")
+
+        if metadata:
+            click.echo("Frontmatter:")
+            for key, value in metadata.items():
+                click.echo(f"  {key}: {value}")
+        else:
+            click.echo("Frontmatter: None")
+
+        click.echo("")
+        click.echo(f"Body size: {len(body)} chars")
+        click.echo(f"Total size: {len(content)} chars")
+
+        # Validation preview
+        tools_list = [target] if target else None
+        report = validate_skill(content, strict=False, tools=tools_list)
+        click.echo("")
+        click.echo("Validation:")
+        click.echo(f"  Score: {report['score']}/100")
+        click.echo(f"  References found: {report['total_references']}")
+        click.echo(f"  Status: {'CLEAN' if report['is_clean'] else 'NEEDS REVIEW'}")
+
+    except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    except FileNotFoundError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Unexpected error: {e}", err=True)
+        sys.exit(1)
+
+
+@cli.command(name="update")
+@click.argument("skill_name")
+@click.option("--target", help="Target tool (if different from installed location)")
+@click.option("--source", "source_url", help="GitHub URL to re-fetch from")
+@click.option("--force", is_flag=True, help="Force update even if no source URL")
+def update_cmd(skill_name, target, source_url, force):
+    """Update an installed skill from its source.
+
+    SKILL_NAME is the name of the installed skill file (without .md extension).
+    """
+    try:
+        skill_key = sanitize_name(skill_name)
+
+        if not target:
+            tool_key = detect_tool()
+        else:
+            tool_key = target
+
+        tool = get_tool(tool_key)
+        skills_dir = Path(tool['skills_dir']).expanduser().resolve()
+        skill_path = skills_dir / f"{skill_key}.md"
+
+        if not skill_path.exists():
+            click.echo(f"Error: skill '{skill_name}' not found at {skill_path}", err=True)
+            sys.exit(1)
+
+        click.echo(f"Found skill: {skill_path}")
+
+        if source_url:
+            click.echo(f"Re-fetching from: {source_url}")
+            new_content = fetch(source_url)
+        elif force:
+            click.echo("No source URL provided, but --force specified. Skipping re-fetch.")
+            new_content = skill_path.read_text(encoding="utf-8")
+        else:
+            click.echo("No source URL provided. Use --source <url> to re-fetch, or --force to skip.")
+            sys.exit(1)
+
+        converted = convert_skill(new_content)
+
+        skill_path.write_text(converted, encoding="utf-8")
+        click.echo(f"Skill updated at: {skill_path}")
+
+        report = validate_skill(converted, strict=False)
+        click.echo(f"Validation score: {report['score']}/100")
+
+    except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    except FileNotFoundError as e:
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
     except Exception as e:
