@@ -55,7 +55,16 @@ def transform_text(text: str) -> str:
 
 def convert(content: str) -> str:
     metadata, body = parse_frontmatter(content)
-    parts = split_code_blocks(body)
+
+    normalized_metadata = normalize_frontmatter(metadata)
+    frontmatter_str = dump_frontmatter(normalized_metadata)
+
+    if frontmatter_str:
+        full_text = frontmatter_str + body
+    else:
+        full_text = body
+
+    parts = split_code_blocks(full_text)
     if VERBOSE:
         print(f"[CONVERT] Input: {len(content)} chars, {len(parts)} parts")
     result_parts: List[str] = []
@@ -66,11 +75,8 @@ def convert(content: str) -> str:
         else:
             result_parts.append(transform_text(part))
 
-    converted_body = "\n".join(result_parts)
-    normalized = normalize_frontmatter(metadata)
-    frontmatter_str = dump_frontmatter(normalized)
-
-    result = frontmatter_str + CONVERSION_HEADER + converted_body
+    converted = "\n".join(result_parts)
+    result = CONVERSION_HEADER + converted
     if VERBOSE:
         print(f"[CONVERT] Output: {len(result)} chars")
     return result

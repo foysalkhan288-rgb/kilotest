@@ -12,6 +12,7 @@ CATEGORY_TO_TYPE = {
     'PATHS': 'path',
     'MODELS': 'model',
     'BUILTIN_TOOLS': 'builtin_tool',
+    'BUILTIN_TOOLS_BARE': 'builtin_tool',
     'UI_HINTS': 'ui_hint',
 }
 

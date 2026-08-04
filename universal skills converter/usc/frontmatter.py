@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 
@@ -103,6 +104,12 @@ def strip_frontmatter(text: str) -> str:
     return remaining
 
 
+def _contains_tool_keyword(key: str, tool_keywords: set[str]) -> bool:
+    """Check if a key contains any tool keyword."""
+    lower_key = key.lower()
+    return any(keyword in lower_key for keyword in tool_keywords)
+
+
 def normalize_frontmatter(
     metadata: dict[str, Any] | None, source_tool: str | None = None
 ) -> dict[str, Any] | None:
@@ -124,8 +131,9 @@ def normalize_frontmatter(
     tool_keywords: set[str] = set()
     if source_tool:
         tool_keywords.add(source_tool.lower())
-        for part in source_tool.lower().split():
-            tool_keywords.add(part)
+        for part in re.split(r'[^a-z0-9]+', source_tool.lower()):
+            if part:
+                tool_keywords.add(part)
 
     for key, value in metadata.items():
         lower_key = key.lower()
@@ -137,7 +145,11 @@ def normalize_frontmatter(
         if lower_key == "model":
             continue
 
-        if any(keyword in lower_key for keyword in tool_keywords):
+        if _contains_tool_keyword(key, tool_keywords):
+            continue
+
+        # Also filter values that contain tool keywords
+        if isinstance(value, str) and _contains_tool_keyword(value, tool_keywords):
             continue
 
         result[key] = value
