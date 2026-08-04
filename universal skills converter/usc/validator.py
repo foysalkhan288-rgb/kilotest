@@ -53,40 +53,45 @@ def find_tool_specific_references(
     findings: list[dict] = []
 
     chunks = _split_outside_code_blocks(text)
+    document_line_offset = 0
 
     for chunk, is_normal in chunks:
         if not is_normal:
+            document_line_offset += chunk.count('\n')
             continue
 
         lines = chunk.split('\n')
         for line_number_relative, line in enumerate(lines, start=1):
+            absolute_line_number = document_line_offset + line_number_relative
+            matched_in_tool_names = False
+
             for category_name, pattern, _ in PATTERN_CATEGORIES:
-                if tools is not None:
-                    if category_name == 'TOOL_NAMES':
-                        tool_set = set(t.lower() for t in tools)
-                        found = False
-                        for match in pattern.finditer(line):
-                            matched_text = match.group(0)
-                            if matched_text.lower() in tool_set:
-                                findings.append({
-                                    'pattern_type': CATEGORY_TO_TYPE[category_name],
-                                    'matched_text': matched_text,
-                                    'line_number': line_number_relative,
-                                    'context': line.strip(),
-                                })
-                                found = True
-                                break
-                        if found:
+                if tools is not None and category_name == 'TOOL_NAMES':
+                    tool_set = set(t.lower() for t in tools)
+                    for match in pattern.finditer(line):
+                        matched_text = match.group(0)
+                        if matched_text.lower() in tool_set:
+                            findings.append({
+                                'pattern_type': CATEGORY_TO_TYPE[category_name],
+                                'matched_text': matched_text,
+                                'line_number': absolute_line_number,
+                                'context': line.strip(),
+                            })
+                            matched_in_tool_names = True
                             break
+                    if matched_in_tool_names:
+                        break
                     continue
 
                 for match in pattern.finditer(line):
                     findings.append({
                         'pattern_type': CATEGORY_TO_TYPE[category_name],
                         'matched_text': match.group(0),
-                        'line_number': line_number_relative,
+                        'line_number': absolute_line_number,
                         'context': line.strip(),
                     })
+
+        document_line_offset += chunk.count('\n')
 
     return findings
 

@@ -69,10 +69,12 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any] | None, str]:
         A tuple of (parsed_yaml_dict, remaining_markdown). If no frontmatter
         is present, returns (None, text).
     """
-    if not text.startswith("---\n"):
+    if not (text.startswith("---\n") or text.startswith("---\r\n")):
         return None, text
 
     end = text.find("\n---", 4)
+    if end == -1:
+        end = text.find("\r\n---", 4)
     if end == -1:
         return None, text
 
@@ -81,6 +83,8 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any] | None, str]:
 
     if remaining.startswith("\n"):
         remaining = remaining[1:]
+    elif remaining.startswith("\r\n"):
+        remaining = remaining[2:]
 
     parsed = _parse_yaml(frontmatter_text)
     return parsed, remaining

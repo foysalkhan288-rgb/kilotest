@@ -18,12 +18,12 @@ def find_skill_files(paths: list[str], recursive: bool = True) -> list[Path]:
             matches = glob.glob(str(path), recursive=recursive)
             for match in matches:
                 p = Path(match)
-                if p.is_file() and p.suffix == ".md":
+                if p.is_file() and p.suffix.lower() == ".md":
                     found.add(p.resolve())
             continue
 
         if path.is_file():
-            if path.suffix == ".md":
+            if path.suffix.lower() == ".md":
                 found.add(path.resolve())
             continue
 
@@ -43,15 +43,16 @@ def batch_convert(
     output_dir: str | None = None,
     force: bool = False,
     dry_run: bool = False,
+    files: list[Path] | None = None,
 ) -> list[dict]:
     from usc.detector import detect_tool
     from usc.tools_registry import get_tool
 
     detect_tool(target)
-    files = find_skill_files(paths)
+    resolved = files if files is not None else find_skill_files(paths)
     results: list[dict] = []
 
-    for file_path in files:
+    for file_path in resolved:
         input_path = file_path
         original_size = input_path.stat().st_size
         error: Optional[str] = None

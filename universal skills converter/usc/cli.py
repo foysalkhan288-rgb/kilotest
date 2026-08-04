@@ -26,11 +26,10 @@ def derive_skill_name(source: str) -> str:
             return "github-skill"
         # github.com URL: /owner/repo[/tree/branch/path]
         if len(parts) >= 1:
-            # Use the last meaningful path component
-            # Filter out 'tree' and 'blob' and branch names
-            meaningful = [p for p in parts if p not in ("tree", "blob", "main", "master")]
-            if meaningful:
-                return sanitize_name(meaningful[-1])
+            for part in reversed(parts):
+                if part.endswith(".md") or part.endswith(".skill.md"):
+                    return sanitize_name(part.replace(".md", "").replace(".skill.md", ""))
+            # Fallback: use repo name
             return sanitize_name(parts[0])
         return "github-skill"
     if is_local_file(source):
@@ -96,7 +95,11 @@ def convert(ctx, source, target, install, output_path, force, dry_run, verbose, 
             return
 
         if output_path:
-            Path(output_path).write_text(converted, encoding="utf-8")
+            dest = Path(output_path)
+            if dest.exists() and not force:
+                click.echo(f"Error: {output_path} already exists. Use --force to overwrite.", err=True)
+                sys.exit(1)
+            dest.write_text(converted, encoding="utf-8")
             click.echo(f"Converted skill written to: {output_path}")
 
         # 5. Install
@@ -250,9 +253,7 @@ def check_cmd(source, target, strict, json_output):
             content = path.read_text(encoding="utf-8")
 
         tools_list = [target] if target else None
-        findings = find_tool_specific_references(content, tools=tools_list)
         report = validate_skill(content, strict=strict, tools=tools_list)
-        # findings already set by validate_skill with same filter, no need to overwrite
 
         if json_output:
             click.echo(json.dumps(report, indent=2))
@@ -297,6 +298,7 @@ def batch_cmd(paths, target, output_dir, force, dry_run, no_recursive):
             output_dir=output_dir,
             force=force,
             dry_run=dry_run,
+            files=files,
         )
 
         print_batch_results(results)

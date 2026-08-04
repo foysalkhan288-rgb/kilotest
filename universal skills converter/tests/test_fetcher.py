@@ -87,15 +87,18 @@ class TestFetchGithub:
 
     def test_fetch_github_api_directory(self):
         """Mock API returning list with skill files."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = [
+        mock_list_response = MagicMock()
+        mock_list_response.status_code = 200
+        mock_list_response.json.return_value = [
             {"type": "file", "name": "SKILL.md", "path": "skills/SKILL.md"}
         ]
+        mock_repo_response = MagicMock()
+        mock_repo_response.status_code = 200
+        mock_repo_response.json.return_value = {"default_branch": "main"}
         mock_file_response = MagicMock()
         mock_file_response.text = "directory skill content"
 
-        with patch("usc.fetcher.requests.get", side_effect=[mock_response, mock_file_response]) as mock_get:
+        with patch("usc.fetcher.requests.get", side_effect=[mock_list_response, mock_repo_response, mock_file_response]) as mock_get:
             result = fetch_github("https://github.com/user/repo")
         assert result == "directory skill content"
 

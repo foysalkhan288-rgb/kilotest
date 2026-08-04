@@ -69,7 +69,7 @@ def _search_skill_files(root: Path) -> list[Path]:
             candidates.append(p)
         elif name.endswith(".skill.md"):
             candidates.append(p)
-        elif p.parts and p.parent.name == "skills" and name.endswith(".md"):
+        elif p.parts and p.parent.name.lower() == "skills" and name.lower().endswith(".md"):
             candidates.append(p)
 
     return candidates
@@ -109,7 +109,15 @@ def fetch_github(url: str) -> str:
                 ):
                     candidates.append(Path(file_path))
             if candidates:
-                file_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{ref or 'main'}/" + str(candidates[0])
+                resolved_ref = ref
+                if not resolved_ref:
+                    repo_url = f"https://api.github.com/repos/{owner}/{repo}"
+                    repo_response = requests.get(repo_url, timeout=30)
+                    if repo_response.status_code == 200:
+                        resolved_ref = repo_response.json().get("default_branch", "main")
+                    else:
+                        resolved_ref = "main"
+                file_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{resolved_ref}/" + str(candidates[0])
                 file_response = requests.get(file_url, timeout=30)
                 file_response.raise_for_status()
                 return file_response.text
@@ -228,12 +236,15 @@ def search_github(query: str, max_results: int = 10) -> list[dict]:
     Returns:
         List of dicts with keys: name, url, description, stars
     """
+    from urllib.parse import urlencode
+
     headers: dict[str, str] = {}
     token = os.environ.get("GITHUB_TOKEN")
     if token:
         headers["Authorization"] = f"token {token}"
 
-    search_url = f"https://api.github.com/search/repositories?q={query}+skill&sort=stars&per_page={max_results}"
+    params = urlencode({"q": f"{query} skill", "sort": "stars", "per_page": max_results})
+    search_url = f"https://api.github.com/search/repositories?{params}"
     response = requests.get(search_url, headers=headers, timeout=30)
 
     if response.status_code != 200:
