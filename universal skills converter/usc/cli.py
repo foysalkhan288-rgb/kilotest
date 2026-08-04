@@ -1,10 +1,12 @@
 import json
 import sys
+from difflib import unified_diff
 from pathlib import Path
 from urllib.parse import urlparse
 
 import click
 
+from usc import __version__
 from usc.batch import batch_convert, find_skill_files, print_batch_results
 from usc.converter import convert as convert_skill, convert_file, set_verbose
 from usc.detector import detect_tool
@@ -43,6 +45,12 @@ def cli():
     pass
 
 
+@cli.command(name="version")
+def version_cmd():
+    """Show the installed version."""
+    click.echo(f"Universal Skills Converter v{__version__}")
+
+
 @cli.command()
 @click.argument("source", required=False, default="-")
 @click.option("--target", help="Target tool (e.g., opencode, cursor, claude-code)")
@@ -52,8 +60,10 @@ def cli():
 @click.option("--dry-run", is_flag=True, help="Print converted skill to stdout without writing to disk")
 @click.option("--verbose", is_flag=True, help="Show detailed transformation logs")
 @click.option("--name", "skill_name", help="Custom name for the skill file (without .md extension)")
+@click.option("--diff", is_flag=True, help="Show unified diff of changes")
+@click.option("--json", "json_output", is_flag=True, help="Output result as JSON")
 @click.pass_context
-def convert(ctx, source, target, install, output_path, force, dry_run, verbose, skill_name):
+def convert(ctx, source, target, install, output_path, force, dry_run, verbose, skill_name, diff, json_output):
     """Convert a skill from a GitHub URL, local file, or stdin.
 
     SOURCE can be a GitHub URL, a local file path, or '-' for stdin.
@@ -90,6 +100,30 @@ def convert(ctx, source, target, install, output_path, force, dry_run, verbose, 
             click.echo(f"Converted to {len(converted)} characters")
 
         # 4. Output handling
+        if diff:
+            diff_lines = list(unified_diff(
+                content.splitlines(keepends=True),
+                converted.splitlines(keepends=True),
+                fromfile="original",
+                tofile="converted",
+            ))
+            diff_text = "".join(diff_lines)
+            if json_output:
+                click.echo(json.dumps({"diff": diff_text, "original_size": len(content), "converted_size": len(converted)}, indent=2))
+            else:
+                click.echo(diff_text)
+            return
+
+        if json_output:
+            result = {
+                "converted": converted,
+                "original_size": len(content),
+                "converted_size": len(converted),
+                "target": tool_key,
+            }
+            click.echo(json.dumps(result, indent=2))
+            return
+
         if dry_run:
             click.echo(converted)
             return
@@ -226,6 +260,51 @@ def list_tools_cmd():
         click.echo(f"    Config: {tool['config_file']}")
         click.echo(f"    Binary: {tool['binary']}")
         click.echo("")
+
+
+@cli.command(name="list-installed")
+@click.option("--target", help="Target tool (default: auto-detect)")
+@click.option("--json", "json_output", is_flag=True, help="Output as JSON")
+def list_installed_cmd(target, json_output):
+    """List installed skills for a tool."""
+    try:
+        tool_key = detect_tool(target)
+        tool = get_tool(tool_key)
+        skills_dir = Path(tool['skills_dir']).expanduser().resolve()
+
+        if not skills_dir.exists():
+            if json_output:
+                click.echo(json.dumps({"tool": tool_key, "skills_dir": str(skills_dir), "skills": []}, indent=2))
+            else:
+                click.echo(f"No skills directory found at {skills_dir}")
+            return
+
+        skill_files = sorted(skills_dir.glob("*.md"))
+        skills = []
+        for skill_path in skill_files:
+            skills.append({
+                "name": skill_path.stem,
+                "path": str(skill_path),
+                "size": skill_path.stat().st_size,
+            })
+
+        if json_output:
+            click.echo(json.dumps({"tool": tool_key, "skills_dir": str(skills_dir), "skills": skills}, indent=2))
+        else:
+            click.echo(f"Installed skills for {tool['name']} ({tool_key}):")
+            click.echo(f"Directory: {skills_dir}")
+            click.echo("")
+            if not skills:
+                click.echo("  No skills installed.")
+            for skill in skills:
+                click.echo(f"  {skill['name']} ({skill['size']} bytes)")
+
+    except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    except Exception as e:
+        click.echo(f"Unexpected error: {e}", err=True)
+        sys.exit(1)
 
 
 @cli.command(name="check")
