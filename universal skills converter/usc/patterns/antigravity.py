@@ -1,5 +1,7 @@
 PATTERNS = [
+    (r'\bAntigravity IDE\b', 'your AI assistant'),
+    (r'\bantigravity\b', 'your AI assistant'),
     (r'/\.antigravity/', ''),
-    (r'antigravity(?:-ide)?', 'your AI assistant'),
-    (r'--model\s+\S+', ''),
+    (r'\bgravity\b', ''),
+    (r'\bworkspace\b', ''),
 ]

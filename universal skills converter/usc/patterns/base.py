@@ -1,17 +1,17 @@
 import re
 
 TOOL_NAMES = (
-    re.compile(r'\b(?:Claude Code|OpenCode|Cursor|Codex|Antigravity IDE|Gemini CLI)\b', re.IGNORECASE),
+    re.compile(r'\b(?:Claude Code|OpenCode|Cursor|Codex|Antigravity IDE|Gemini CLI|Windsurf IDE|Aide)\b', re.IGNORECASE),
     'your AI assistant'
 )
 
 COMMANDS = (
-    re.compile(r'^\s*(?:claude|opencode|cursor|codex|antigravity|gemini)\s+.*$', re.IGNORECASE | re.MULTILINE),
+    re.compile(r'^\s*(?:claude|opencode|cursor|codex|antigravity|gemini|windsurf|aide)\s+.*$', re.IGNORECASE | re.MULTILINE),
     ''
 )
 
 PATHS = (
-    re.compile(r'(?:~/.claude/[^\s]*|~/.config/opencode/[^\s]*|~/.cursor/[^\s]*|~/.codex/[^\s]*|~/.antigravity/[^\s]*|~/.gemini/[^\s]*)', re.IGNORECASE),
+    re.compile(r'(?:~/.claude/[^\s]*|~/.config/opencode/[^\s]*|~/.cursor/[^\s]*|~/.codex/[^\s]*|~/.antigravity/[^\s]*|~/.gemini/[^\s]*|~/.windsurf/[^\s]*|~/.aide/[^\s]*)', re.IGNORECASE),
     ''
 )
 

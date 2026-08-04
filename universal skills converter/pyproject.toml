@@ -7,6 +7,7 @@ dependencies = [
     "click",
     "requests",
     "psutil",
+    "pyyaml",
 ]
 
 [project.optional-dependencies]
@@ -14,6 +15,7 @@ dev = [
     "pytest",
     "pytest-cov",
 ]
+webui = ["flask"]
 
 [project.scripts]
 usc = "usc.cli:cli"

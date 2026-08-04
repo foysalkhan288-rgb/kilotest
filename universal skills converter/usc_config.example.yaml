@@ -1,0 +1,16 @@
+# Universal Skills Converter configuration
+# Place at ~/.config/usc/config.yaml or ~/.usc.yaml
+
+# Custom regex patterns (applied after base patterns)
+# Note: Use single quotes for regex patterns so backslashes are preserved literally.
+patterns:
+  - regex: '\bMyCustomTool\b'
+    replacement: 'your AI assistant'
+  - regex: '~/.mytool/'
+    replacement: ''
+
+# Only enable these tools (leave empty for all)
+# enabled_tools:
+#   - claude-code
+#   - opencode
+#   - cursor

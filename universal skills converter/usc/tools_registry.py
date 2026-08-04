@@ -40,6 +40,20 @@ TOOLS = {
         'config_file': '~/.gemini/config.json',
         'binary': 'gemini',
         'pattern_file': 'patterns/gemini.py'
+    },
+    'windsurf': {
+        'name': 'Windsurf',
+        'skills_dir': '~/.windsurf/skills/',
+        'config_file': '~/.windsurf/config.json',
+        'binary': 'windsurf',
+        'pattern_file': 'patterns/windsurf.py'
+    },
+    'aide': {
+        'name': 'Aide',
+        'skills_dir': '~/.aide/skills/',
+        'config_file': '~/.aide/config.json',
+        'binary': 'aide',
+        'pattern_file': 'patterns/aide.py'
     }
 }
 

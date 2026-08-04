@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Skills Converter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Universal Skills Converter</h1>
+            <button id="theme-toggle" aria-label="Toggle theme">🌓</button>
+        </header>
+
+        <main>
+            <div class="controls">
+                <div class="control-group">
+                    <label for="github-url">GitHub URL</label>
+                    <div class="input-row">
+                        <input type="text" id="github-url" placeholder="https://github.com/owner/repo">
+                        <button id="fetch-btn" type="button">Fetch</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="target-tool">Target Tool</label>
+                    <select id="target-tool">
+                        {% for tool in tools %}
+                        <option value="{{ tool }}">{{ tool }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>&nbsp;</label>
+                    <button id="convert-btn" type="button">Convert</button>
+                </div>
+            </div>
+
+            <div class="panels">
+                <div class="panel">
+                    <label for="input-content">Input</label>
+                    <textarea id="input-content" placeholder="Paste skill content here or fetch from GitHub..."></textarea>
+                </div>
+                <div class="panel">
+                    <label for="output-content">Output</label>
+                    <textarea id="output-content" readonly placeholder="Converted skill will appear here..."></textarea>
+                    <div class="output-actions">
+                        <button id="copy-btn" type="button">Copy to Clipboard</button>
+                        <button id="download-btn" type="button">Download</button>
+                    </div>
+                    <div id="stats" class="stats" hidden>
+                        <span id="stats-text"></span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        (function() {
+            const input = document.getElementById('input-content');
+            const output = document.getElementById('output-content');
+            const targetSelect = document.getElementById('target-tool');
+            const githubInput = document.getElementById('github-url');
+            const fetchBtn = document.getElementById('fetch-btn');
+            const convertBtn = document.getElementById('convert-btn');
+            const copyBtn = document.getElementById('copy-btn');
+            const downloadBtn = document.getElementById('download-btn');
+            const stats = document.getElementById('stats');
+            const statsText = document.getElementById('stats-text');
+            const themeToggle = document.getElementById('theme-toggle');
+
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.body.classList.add('dark');
+            }
+
+            themeToggle.addEventListener('click', function() {
+                document.body.classList.toggle('dark');
+                localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+            });
+
+            fetchBtn.addEventListener('click', async function() {
+                const url = githubInput.value.trim();
+                if (!url) return;
+
+                fetchBtn.disabled = true;
+                fetchBtn.textContent = 'Fetching...';
+
+                try {
+                    const res = await fetch('/api/convert', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: '', target: targetSelect.value, source: url }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                        alert(data.error || 'Failed to fetch');
+                        return;
+                    }
+                    input.value = data.original_size ? '' : data.converted;
+                    output.value = data.converted;
+                    updateStats(data);
+                } catch (e) {
+                    alert('Network error: ' + e.message);
+                } finally {
+                    fetchBtn.disabled = false;
+                    fetchBtn.textContent = 'Fetch';
+                }
+            });
+
+            convertBtn.addEventListener('click', async function() {
+                const content = input.value;
+                if (!content.trim()) {
+                    alert('Please enter content to convert');
+                    return;
+                }
+
+                convertBtn.disabled = true;
+                convertBtn.textContent = 'Converting...';
+
+                try {
+                    const res = await fetch('/api/convert', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: content, target: targetSelect.value }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                        alert(data.error || 'Conversion failed');
+                        return;
+                    }
+                    output.value = data.converted;
+                    updateStats(data);
+                } catch (e) {
+                    alert('Network error: ' + e.message);
+                } finally {
+                    convertBtn.disabled = false;
+                    convertBtn.textContent = 'Convert';
+                }
+            });
+
+            copyBtn.addEventListener('click', function() {
+                if (!output.value) return;
+                navigator.clipboard.writeText(output.value).then(function() {
+                    const original = copyBtn.textContent;
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => { copyBtn.textContent = original; }, 1500);
+                }).catch(() => {
+                    output.select();
+                    document.execCommand('copy');
+                });
+            });
+
+            downloadBtn.addEventListener('click', function() {
+                if (!output.value) return;
+                const blob = new Blob([output.value], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'converted-skill.md';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            function updateStats(data) {
+                if (data.changes && data.changes.length > 0) {
+                    const change = data.changes[0];
+                    const charsChanged = change.chars_changed || 0;
+                    const sign = charsChanged >= 0 ? '+' : '';
+                    statsText.textContent = `Original: ${data.original_size} chars | Converted: ${data.converted_size} chars | Changed: ${sign}${charsChanged} chars`;
+                    stats.hidden = false;
+                }
+            }
+        })();
+    </script>
+</body>
+</html>
