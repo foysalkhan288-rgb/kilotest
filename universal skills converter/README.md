@@ -47,6 +47,15 @@ usc check skill.md --target opencode
 # Batch convert a directory
 usc batch ./skills/ --target cursor --output-dir ./converted/
 
+# Search GitHub for skills
+usc search "claude code prompting"
+
+# Inspect skill metadata
+usc info skill.md --target opencode
+
+# Update an installed skill
+usc update my-skill --source https://github.com/user/repo
+
 # Start web UI
 python3 -m webui.run
 ```
@@ -71,6 +80,8 @@ Options:
   --dry-run           Print converted skill without writing
   --verbose           Show detailed transformation logs
   --name TEXT         Custom name for skill file (without .md)
+  --diff              Show unified diff of changes
+  --json              Output result as JSON
 ```
 
 ### `usc init <name>`
@@ -92,9 +103,25 @@ Options:
 
 Detect the currently active AI coding tool.
 
+### `usc version`
+
+Show the installed version.
+
 ### `usc list-tools`
 
 List all supported AI coding tools and their configuration paths.
+
+### `usc list-installed`
+
+List installed skills for a tool.
+
+```
+usc list-installed [OPTIONS]
+
+Options:
+  --target TEXT   Target tool (default: auto-detect)
+  --json          Output as JSON
+```
 
 ### `usc check <source>`
 
@@ -122,6 +149,42 @@ Options:
   --force             Overwrite existing files
   --dry-run           Preview without writing
   --no-recursive      Don't search subdirectories
+```
+
+### `usc search <query>`
+
+Search GitHub for skills.
+
+```
+usc search <QUERY> [OPTIONS]
+
+Options:
+  --max-results INTEGER   Maximum number of results
+  --json                  Output as JSON
+```
+
+### `usc info <source>`
+
+Show metadata and validation info for a skill.
+
+```
+usc info <SOURCE> [OPTIONS]
+
+Options:
+  --target TEXT   Target tool for validation context
+```
+
+### `usc update <skill-name>`
+
+Update an installed skill from its source.
+
+```
+usc update <SKILL_NAME> [OPTIONS]
+
+Options:
+  --target TEXT   Target tool (if different from installed location)
+  --source TEXT   GitHub URL to re-fetch from
+  --force         Force update even if no source URL
 ```
 
 ## Supported Tools
